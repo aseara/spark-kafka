@@ -7,12 +7,16 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
+import org.apache.spark.streaming.api.java.JavaPairInputDStream;
 import org.apache.spark.streaming.api.java.JavaReceiverInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
+import org.apache.spark.streaming.kafka.KafkaUtils;
 import scala.Tuple2;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -25,17 +29,22 @@ public class KafkaNetworkWordCount {
 
     public static void main(String[] args) throws Exception {
 
-        // Create the context with a 1 second batch size
         SparkConf sparkConf = new SparkConf().setAppName("KafkaNetworkWordCount");
         JavaStreamingContext ssc = new JavaStreamingContext(sparkConf, Durations.seconds(1));
 
-        //ssc.sparkContext().addJar("E:\\study\\spark\\spark-streaming-java\\out\\" +
-        //        "artifacts\\spark_streaming_java_jar\\spark-streaming-java.jar");
+        //JavaReceiverInputDStream<String> lines =
+        //         KafkaUtils.createDirectStream(scc, )
 
-        // Create a DStream that will connect to hostname:port, like localhost:9999
-        JavaReceiverInputDStream<String> lines = ssc.socketTextStream("192.168.2.191", 9999);
+        String zkQuorum = "192.168.2.191:2181";
+        String group = "1";
+        Map<String, Integer> topicMap = new HashMap<>();
+        topicMap.put("test", 1);
 
-        JavaDStream<String> words = lines.flatMap((FlatMapFunction<String, String>) x -> Arrays.asList(SPACE.split(x)));
+        JavaPairInputDStream<String, String> lines = KafkaUtils.createStream(ssc, zkQuorum, group, topicMap);
+
+        JavaDStream<String> words = lines.flatMap((FlatMapFunction<Tuple2<String, String>, String>)
+                x -> Arrays.asList(SPACE.split(x._2())));
+
         JavaPairDStream<String, Integer> wordCounts = words.mapToPair(
                 (PairFunction<String, String, Integer>) s -> new Tuple2<>(s, 1))
                 .reduceByKey((Function2<Integer, Integer, Integer>) (i1, i2) -> i1 + i2);
