@@ -28,7 +28,6 @@ public class KafkaNetworkWordCount {
     private static final Pattern SPACE = Pattern.compile(" ");
 
     public static void main(String[] args) throws Exception {
-
         SparkConf sparkConf = new SparkConf().setAppName("KafkaNetworkWordCount");
         JavaStreamingContext ssc = new JavaStreamingContext(sparkConf, Durations.seconds(1));
 
@@ -48,7 +47,6 @@ public class KafkaNetworkWordCount {
         JavaPairDStream<String, Integer> wordCounts = words.mapToPair(
                 (PairFunction<String, String, Integer>) s -> new Tuple2<>(s, 1))
                 .reduceByKey((Function2<Integer, Integer, Integer>) (i1, i2) -> i1 + i2);
-
 
         wordCounts.print();
 
